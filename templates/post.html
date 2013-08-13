@@ -1,0 +1,17 @@
+<div class="post">
+  <h2>
+    <div class="date-stamp">$date$</div>
+    <a href="$url$" class="underline-hover">$title$</a>
+    $if(subtitle)$
+      <div class="subtitle">$subtitle$</h3>
+    $endif$
+  </h2>
+  $if(teaser)$
+    $teaser$
+    <div class="read-more">
+      <a href="$url$">Read More »</a>
+    </div>
+  $else$
+    $body$
+  $endif$
+</div>
