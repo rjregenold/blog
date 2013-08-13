@@ -56,6 +56,18 @@ blog = do
     ul ** li ? do
       display inline
 
+  ".separateable" ? do
+    li ? do
+      borderRight solid (px 1) blogDarkGray
+      float floatLeft
+      lineHeight (px 14)
+      marginRight (px 10)
+      padding (px 0) (px 10) (px 0) (px 0)
+      ":last-child" & do
+        borderRightStyle none
+        marginRight (px 0)
+        paddingRight (px 0)
+
   "#be-social" ** li ? do
     fontSize (px 14)
     marginLeft (px 15)
@@ -98,7 +110,7 @@ blog = do
   syntax
 
 tabletsAndPhones = queryOnly M.screen [M.maxWidth (px 959)] $ do
-  "#be-social" ? display displayNone
+  "#be-social" <> "#made-with" ? display displayNone
 
 syntaxMap = 
   [ (".kw", "#f0dfaf")
