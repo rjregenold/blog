@@ -1,0 +1,81 @@
+---
+title: Speak
+subtitle: Making our build server talk
+---
+
+At my day job, we have an iMac that runs [Jenkins](http://jenkins-ci.org/) and
+runs our test suite, among other things. It also happens to have some really
+nice speakers attached to it. One thing it was sorely lacking was the ability
+to remotely execute the [OSX say 
+command](https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man1/say.1.html).
+
+That was until today.
+
+<!--more-->
+
+I\'ve been playing around with [Happstack](http://happstack.com) and had an idea to 
+write a small web app that would accept a `POST` request with some parameters
+and invoke the `say` command (turns out my co-worker already had the exact same
+idea and wrote a version using [bottle](http://bottlepy.org/docs/dev/). Great
+minds think like him). The end result was pretty succint.
+
+``` {.haskell .numberLines}
+{-# LANGUAGE OverloadedStrings #-}
+
+module Main where
+
+import Control.Applicative ((<$>), optional)
+import Control.Monad.Trans (liftIO)
+import Data.Maybe (fromMaybe)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as E
+import Happstack.Lite
+import Happstack.Server.RqData (lookText')
+import System.Cmd (system)
+import qualified Text.ShellEscape as SE
+
+
+speakHandler :: ServerPart Response
+speakHandler = do
+  method POST
+  msg <- lookText' "msg"
+  voice <- fromMaybe "Daniel" <$> (optional $ lookText' "voice")
+  _ <- liftIO $ system $ buildCmd voice msg
+  ok $ toResponse ()
+  where
+    safeArg = E.decodeUtf8 . SE.bytes . SE.sh . E.encodeUtf8
+    buildCmd voice msg = T.unpack . T.unwords $
+      [ "say"
+      , "-v", safeArg voice
+      , safeArg msg
+      ]
+
+speakApp :: ServerPart Response
+speakApp = msum
+  [ dir "say" $ speakHandler
+  ]
+```
+
+Those are the beefy parts of it. It takes a required and optional argument,
+sanitizes the inputs, builds the command, then executes it. The idea is to
+install and run this on the iMac:
+
+``` {.bash}
+$ speak
+```
+
+Then from any client, we can now use curl to make the build server talk.
+
+``` {.bash}
+$ curl --data "msg=Hi." http://ourbuildserver.com:7919/say
+```
+
+Cool. Our summer intern who is working remotely during the year had a great
+idea: he is going to write a script and install schedule a cron job to pull his
+commits from the previous day, then have the build server read them during our
+daily standup.
+
+I added some support for specifying the port and what not and threw the project 
+up on darcs hub. Check it out.
+
+[http://hub.darcs.net/rjregenold/speak](http://hub.darcs.net/rjregenold/speak)
