@@ -96,6 +96,8 @@ blog = do
         fontSizeCustom smaller
         textDecoration none
       a # hover ? textDecoration underline
+    ul ? do
+      "list-style" -: "disc inside"
     let refs = ".references"
     refs ? fontSize (px 17)
     refs |+ ul ? do

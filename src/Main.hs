@@ -25,7 +25,7 @@ main = hakyllWith hakyllConfiguration $ do
 
   match "css/*.hs" $ do
     route   $ setExtension "css"
-    compile $ getResourceString >>= withItemBody (unixFilter "runghc" [])
+    compile $ getResourceString >>= withItemBody (unixFilter "runghc" ["-package-db=.cabal-sandbox/x86_64-osx-ghc-7.6.3-packages.conf.d"])
 
   match "css/*.css" $ do
     route   idRoute

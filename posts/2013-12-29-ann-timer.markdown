@@ -1,0 +1,165 @@
+---
+title: ANNOUNCE: Timer
+---
+
+This December, I read through each great post by
+[ocharles](https://twitter.com/acid2) in his [24 Days of Hackage 
+2013](http://ocharles.org.uk/blog/pages/2013-12-01-24-days-of-hackage.html) series.
+All the libraries he covered inspired me to try and write a small, useful
+Haskell application that used one or more of them.
+[Timer](https://github.com/rjregenold/timer) is the result of that effort.
+
+<!--more-->
+
+## Overview
+
+Timer is a project-based timer. It allows one or more timers to be active at
+any given time. It also keeps a record of all previous time entries. A typical
+workflow might look like this:
+
+```bash
+$ timer start foobar
+started timer
+
+$ timer active
+Timer     Duration    Start
+foobar    00:00:12    12/29/13 01:53:14 PM
+
+$ timer stop foobar
+stopped timer
+
+$ timer list foobar
+Duration    Start                   End
+00:01:06    12/29/13 01:53:14 PM    12/29/13 01:54:21 PM
+00:31:08    12/29/13 12:18:54 PM    12/29/13 12:50:03 PM
+00:18:21    12/29/13 11:52:04 AM    12/29/13 12:10:26 PM
+```
+
+One benefit of having a simple command-line interface is that the output can be
+easily parsed and used in different tools. I use tmux for all my development,
+so I wrote a short bash script to check for an active timer, parse out the name
+and duration, and display that in the tmux status bar.
+
+```bash
+# status-timer.sh
+#!/usr/bin/env bash
+
+TIMER=`timer active | sed -n 2p | awk '{print $1" "$2}'`
+
+if [ -n "$TIMER" ]; then
+  echo $TIMER
+else
+  echo "none"
+fi
+```
+
+Then I updated my `~/.tmux.conf` to look something like this:
+
+```bash
+# status bar
+set-option -g status-interval 10
+set -g status-right "[timer: #(~/.tmux/status-timer.sh)] %m/%d/%y %H:%M "
+```
+
+Now I get a cool entry in my status bar that looks something like this when
+a timer is active:
+
+```bash
+[timer: foobar 00:13:24]
+```
+
+It looks like this when no timer is active:
+
+```bash
+[timer: none]
+```
+
+## Libraries
+
+The entire purpose of writing this application was to play with some of the
+cool libraries ocharles blogged about. I ended up using
+[acid-state](http://hackage.haskell.org/package/acid-state). It seems to be working 
+great. I love how I don\'t have to mess around with any marshalling or 
+unmarshalling of types. It was very simple to get up and running quickly.
+
+Here is all the persistence code for the app:
+
+```haskell
+data Entry = Entry
+  { _entryStartAt :: UTCTime
+  , _entryEndAt   :: UTCTime
+  }
+  deriving (Show, Typeable)
+
+deriveSafeCopy 0 'base ''Entry
+
+data Timer = Timer
+  { _timerName    :: Text
+  , _timerStartAt :: Maybe UTCTime
+  , _timerEntries :: [Entry]
+  }
+  deriving (Show, Typeable)
+
+deriveSafeCopy 0 'base ''Timer
+
+data Db = Db
+  { _dbTimers :: [Timer]
+  }
+  deriving (Typeable)
+
+deriveSafeCopy 0 'base ''Db
+
+allTimers :: Query Db [Timer]
+allTimers = _dbTimers <$> ask
+
+lookupTimerByName :: Text -> Query Db (Maybe Timer)
+lookupTimerByName name = find ((==name) . _timerName) . _dbTimers <$> ask
+
+addTimer :: Timer -> Update Db Timer
+addTimer timer = state $ \db@Db{..} -> (timer, db { _dbTimers = timer : _dbTimers })
+
+updateTimer :: Timer -> Update Db Timer
+updateTimer timer = state $ \db@Db{..} -> (timer, db { _dbTimers = timer : dropTimer _dbTimers})
+  where
+    dropTimer = filter ((/= (_timerName timer)) . _timerName)
+
+makeAcidic ''Db 
+  [ 'allTimers
+  , 'lookupTimerByName
+  , 'addTimer
+  , 'updateTimer
+  ]
+
+emptyDb :: Db
+emptyDb = Db
+  { _dbTimers = []
+  }
+```
+
+A dash of Template Haskell, but mostly just straight Haskell data types in
+familiar monads (Reader and State).
+
+My only concern with using acid-state in a command line application is that
+I am not sure how performance will be affected as the size of the database
+grows. Since each command requires loading the data from disk, this may be
+a problem. I need to load test it and find out.
+
+## Ideas
+
+While this basic functionality covers my needs, I do have a few ideas for
+improving the application (ie: more excuses to play with cool libraries).
+
+* The command line doesn\'t suit everyone. Use
+  [threepenny-gui](http://hackage.haskell.org/package/threepenny-gui) to create
+  a nice GUI.
+* Allow a saved entry to be deleted.
+* Allow notes to be added for each entry. This might be useful to log what you
+  did during that time.
+* Allow a timer to be paused and resumed.
+
+## Conclusion
+
+That about wraps it up. I had a lot of fun building this application and hope
+it is useful for others as well. If you have any ideas or suggestions, open up
+an issue (or even better, send a pull request) on
+[github](https://github.com/rjregenold/timer).
