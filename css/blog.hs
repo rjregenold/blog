@@ -1,10 +1,12 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 import           Prelude hiding ((**), div, span)
 import           Control.Monad
 import           Clay
 import qualified Clay.Media as M
 import           Data.Monoid
 import qualified Data.Text.Lazy.IO as T
+
 
 -- colors
 blogRed         = "#6D3B34"

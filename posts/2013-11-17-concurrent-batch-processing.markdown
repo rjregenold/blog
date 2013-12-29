@@ -2,6 +2,9 @@
 title: Concurrent Batch Processing
 ---
 
+**EDIT**: I present a better way to do this in [part 2 of this
+post](/posts/2013-11-19-concurrent-batch-processing-part-2.html).
+
 At my day job I often find myself needing to pull a bunch of data from the
 database and process each row. The consumer is generally really slow, executing
 either a bunch of IO bound or CPU bound tasks on each row (downloading files, 
@@ -22,14 +25,14 @@ path of really over-engineering this thing, using [Akka](http://akka.io/) and
 the actor-model to pull data and distribute it to workers. My thinking was that 
 as things grew, we could spin-up extra boxes, run workers on those boxes and 
 distribute the work to all those new workers. This worked pretty well, but I 
-didn't really like how all the messages passed around in Akka are untyped. Also, 
+didn\'t really like how all the messages passed around in Akka are untyped. Also, 
 I ended up with a large, complex actor based system that is now very difficult 
 to reason about and make changes to.
 
 I\'ve been learning/using Haskell for personal projects for the past 2 years.
 I spent a little time one evening trying to figure out how I would solve this
 in Haskell. I came across [this paste](http://lpaste.net/79863) which presents
-a really clean way to concurrently process batches of data. I've basically
+a really clean way to concurrently process batches of data. I\'ve basically
 plagiarized it for my own purposes.
 
 Below is a full skeleton example that uses the
@@ -210,7 +213,7 @@ Lines 45-79 define a simple logging service that is just responsible for
 keeping stdout sane.
 
 This still loads all the book ids to be processed into memory at once. This
-does not seem to be too big of a problem yet. I'm doing this because the
+does not seem to be too big of a problem yet. I\'m doing this because the
 documentation for `forEach` in mysql-simple says the consumer must return
 quickly to prevent tying up server resources and preventing other clients from
 updated the tables that are streaming results. If I find a better way I will
